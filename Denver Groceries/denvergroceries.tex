@@ -1,0 +1,673 @@
+\documentclass[]{tufte-handout}
+
+% ams
+\usepackage{amssymb,amsmath}
+
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \makeatletter
+  \@ifpackageloaded{fontspec}{}{\usepackage{fontspec}}
+  \makeatother
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+  \makeatletter
+  \@ifpackageloaded{soul}{
+     \renewcommand\allcapsspacing[1]{{\addfontfeature{LetterSpace=15}#1}}
+     \renewcommand\smallcapsspacing[1]{{\addfontfeature{LetterSpace=10}#1}}
+   }{}
+  \makeatother
+
+\fi
+
+% graphix
+\usepackage{graphicx}
+\setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio}
+
+% booktabs
+\usepackage{booktabs}
+
+% url
+\usepackage{url}
+
+% hyperref
+\usepackage{hyperref}
+
+% units.
+\usepackage{units}
+
+
+\setcounter{secnumdepth}{-1}
+
+% citations
+
+
+% pandoc syntax highlighting
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+
+% table with pandoc
+
+% multiplecol
+\usepackage{multicol}
+
+% strikeout
+\usepackage[normalem]{ulem}
+
+% morefloats
+\usepackage{morefloats}
+
+
+% tightlist macro required by pandoc >= 1.14
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% title / author / date
+\title{Which Grocery Store\ldots Denver?}
+\author{Andrew McCartney}
+\date{1/18/2022}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{longtable}
+
+\begin{document}
+
+\maketitle
+
+
+
+
+\hypertarget{motivation}{%
+\subsection{Motivation}\label{motivation}}
+
+Imagine: I'm in the group chat. My friend Arielle is psyching herself up
+to go get groceries, and upon a query, writes, ``it's the worst. in part
+because my grocery store is the worst. I think it would be less
+stressful if I had a better store. it's understocked, so poorly staffed,
+checkout takes ages and either you have to bag your own groceries or you
+have to wait forever in line just to do self checkout but they still
+don't turn on more of the self check out kiosks for some reason. outside
+lots of unsavory types loiter and it's uncomfortable, everything smells
+like piss.''
+
+Then Laura writes: ``Andrew you should map all the grocery stores by
+driving distance and reviews to determine the best option.''
+
+\textbf{Say no more, fam}.
+
+\hypertarget{initial-code}{%
+\subsection{Initial Code}\label{initial-code}}
+
+So to get started, we need to think about how we are going to access
+data on all the grocery stores nearby my friend's house. I've previously
+done an analysis like this for the groupchat when Arielle's sister was
+moving to Salt Lake City and needed to find housing. There turned out to
+be a Craigslist API then. And the time I needed to pull song lyrics for
+a witter bot: Genius.com has an API too. Surely google maps will let me
+access their reviews for all the nearby stores?
+
+I do a little googling and I find that there's a new app--new to me at
+least--called \texttt{googleway}. It covers a host of map related APIs
+that I didn't realize existed. Do I need to generate an API key? I go to
+their website and I'm stunned to find I have a google maps API key from
+another project from 2.5 years ago live and ready to go.
+
+Initial fumbling with this gives me some locked results and I realize
+that for each individual service that the googleway / google maps API
+allows, I need to go to my API key and enable that service.
+
+The first two commands are for the \texttt{googleway} API. My key is
+saved in a not-included setup chunk for privacy. The third line here is
+registering with the \texttt{ggmaps} package--my old standby.
+
+(I once made a shiny app that called down the google maps API any time a
+user toggled anything. I was running several hundred requests a session
+just to look at different maps of Africa. I'm reasonably certain
+\textbf{I'm personally responsible} for API requireing an account and a
+key now)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set\_key}\NormalTok{(}\AttributeTok{key =}\NormalTok{ key)}
+\FunctionTok{google\_keys}\NormalTok{()}
+\FunctionTok{register\_google}\NormalTok{(}\AttributeTok{key =}\NormalTok{ key)}
+\end{Highlighting}
+\end{Shaded}
+
+Having logged in and connected, we need to run our first data pull.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{res }\OtherTok{\textless{}{-}} \FunctionTok{google\_places}\NormalTok{(}\AttributeTok{location =}\NormalTok{ arielle,}
+                     \AttributeTok{keyword =} \StringTok{"Grocery Store"}\NormalTok{,}
+                     \AttributeTok{radius =} \DecValTok{5000}\NormalTok{,}
+                     \AttributeTok{key =}\NormalTok{ key)}
+\end{Highlighting}
+\end{Shaded}
+
+this is calling the \texttt{arielle} object I made earlier, which is a
+list of two elements representing her longitude and latitude in Denver.
+
+I expected the returned object from this to be a data frame, so you can
+imagine my befuddlement the first few times I ran this and got a url in
+the console. The first few URLs I plugged in threw the error I mentioned
+above (access denied) and then I was able to run it properly. The next
+code calls on that URL and converts its content from JSON format to a
+tidy data frame that I can use.
+
+So in this place, which I cannot show because it would expose my key, I
+have code to the effect of:
+
+\begin{verbatim}
+groceries <-jsonlite::fromJSON("https://url generated by last step goes here")
+\end{verbatim}
+
+and I use the results of that to generate a tibble calling on the
+following nested lists:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{groceries\_tib}\OtherTok{\textless{}{-}}\FunctionTok{cbind}\NormalTok{(groceries}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{name,}
+\NormalTok{      groceries}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{geometry}\SpecialCharTok{$}\NormalTok{location}\SpecialCharTok{$}\NormalTok{lat,}
+\NormalTok{      groceries}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{geometry}\SpecialCharTok{$}\NormalTok{location}\SpecialCharTok{$}\NormalTok{lng,}
+\NormalTok{      groceries}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{rating, }
+\NormalTok{      groceries}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{user\_ratings\_total) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{as\_tibble}\NormalTok{()}
+\NormalTok{gro1}\OtherTok{\textless{}{-}}\NormalTok{groceries\_tib }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{rename}\NormalTok{(}\AttributeTok{name=}\NormalTok{V1, }
+         \AttributeTok{latitude =}\NormalTok{ V2,}
+         \AttributeTok{longitude =}\NormalTok{ V3, }
+         \AttributeTok{rating =}\NormalTok{ V4, }
+         \AttributeTok{n\_ratings =}\NormalTok{ V5) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating))}
+\end{Highlighting}
+\end{Shaded}
+
+But because there is a rate limit of 20 and I had already decided to
+pull the first 40 grocery stores, I have to run this twice to get
+\texttt{gro2} to match \texttt{gro1} that I just created. The second run
+is a bit more intensive because we are calling a ``next page'' of
+results from google.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{res\_next }\OtherTok{\textless{}{-}} \FunctionTok{google\_places}\NormalTok{(}\AttributeTok{location =}\NormalTok{ arielle,}
+                          \AttributeTok{keyword =} \StringTok{"Grocery Store"}\NormalTok{,}
+                          \AttributeTok{page\_token =}\NormalTok{ groceries}\SpecialCharTok{$}\NormalTok{next\_page\_token,}
+                          \AttributeTok{radius =} \DecValTok{5000}\NormalTok{,}
+                          \AttributeTok{key =}\NormalTok{ key)}
+\end{Highlighting}
+\end{Shaded}
+
+This should be the last code I have to hide for a while, but I did the
+same URL -\textgreater{} JSON business I did with the first section. I
+clean it up:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{groceries\_2\_tib}\OtherTok{\textless{}{-}}\FunctionTok{cbind}\NormalTok{(groceries\_2}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{name,}
+\NormalTok{                   groceries\_2}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{geometry}\SpecialCharTok{$}\NormalTok{location}\SpecialCharTok{$}\NormalTok{lat,}
+\NormalTok{                   groceries\_2}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{geometry}\SpecialCharTok{$}\NormalTok{location}\SpecialCharTok{$}\NormalTok{lng,}
+\NormalTok{                   groceries\_2}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{rating, }
+\NormalTok{                   groceries\_2}\SpecialCharTok{$}\NormalTok{result}\SpecialCharTok{$}\NormalTok{user\_ratings\_total) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{as\_tibble}\NormalTok{()}
+
+
+\NormalTok{gro2}\OtherTok{\textless{}{-}}\NormalTok{groceries\_2\_tib }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{rename}\NormalTok{(}\AttributeTok{name=}\NormalTok{V1, }
+         \AttributeTok{latitude =}\NormalTok{ V2,}
+         \AttributeTok{longitude =}\NormalTok{ V3, }
+         \AttributeTok{rating =}\NormalTok{ V4, }
+         \AttributeTok{n\_ratings =}\NormalTok{ V5) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating))}
+\end{Highlighting}
+\end{Shaded}
+
+And now we can join them together into one proper data frame and examine
+what we have.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro}\OtherTok{\textless{}{-}}\NormalTok{dplyr}\SpecialCharTok{::}\FunctionTok{bind\_rows}\NormalTok{(gro1,gro2)}
+
+
+\NormalTok{gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating)) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{head}\NormalTok{(}\DecValTok{10}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  gt}\SpecialCharTok{::}\FunctionTok{gt}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{   gt}\SpecialCharTok{::}\FunctionTok{tab\_header}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Top Ten Rated Grocery Stores in Denver"}
+\NormalTok{  ) }
+\end{Highlighting}
+\end{Shaded}
+
+\captionsetup[table]{labelformat=empty,skip=1pt}
+\begin{longtable}{lllll}
+\caption*{
+\large Top Ten Rated Grocery Stores in Denver\\ 
+} \\ 
+\toprule
+name & latitude & longitude & rating & n\_ratings \\ 
+\midrule
+Ready Foods Inc & 39.7401931 & -105.0208209 & 5 & 1 \\ 
+Sun Market & 39.7496388 & -104.9711721 & 4.9 & 21 \\ 
+Town \& Country Market Produce & 39.7399005 & -104.9371343 & 4.9 & 17 \\ 
+Pete's Fruits \& Vegetables & 39.7129002 & -104.9220065 & 4.7 & 164 \\ 
+Denver Market & 39.7715998 & -105.006592 & 4.6 & 27 \\ 
+Trader Joe's & 39.7268649 & -104.9827877 & 4.6 & 2295 \\ 
+Marczyk Fine Foods & 39.7429609 & -104.9780866 & 4.6 & 771 \\ 
+12th Ave Market & 39.7349414 & -104.9558239 & 4.5 & 62 \\ 
+Trader Joe's & 39.7287708 & -104.9403211 & 4.5 & 3497 \\ 
+Leevers Locavore & 39.7689136 & -105.019854 & 4.5 & 411 \\ 
+\bottomrule
+\end{longtable}
+
+This tells us some good information: first of all, the highest-rated
+grocery store only has one review, so that's dubious and we need to keep
+that in mind from now on. It also puts two Trader Joe's in the top 10,
+which strikes me as appropriate.
+
+What about the bottom ten?
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating)) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{tail}\NormalTok{(}\DecValTok{10}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  gt}\SpecialCharTok{::}\FunctionTok{gt}\NormalTok{()}\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{   gt}\SpecialCharTok{::}\FunctionTok{tab\_header}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Ten Worst Grocery Stores in Denver"}
+\NormalTok{  ) }
+\end{Highlighting}
+\end{Shaded}
+
+\captionsetup[table]{labelformat=empty,skip=1pt}
+\begin{longtable}{lllll}
+\caption*{
+\large Ten Worst Grocery Stores in Denver\\ 
+} \\ 
+\toprule
+name & latitude & longitude & rating & n\_ratings \\ 
+\midrule
+King Soopers & 39.7310976 & -104.9735003 & 4 & 1364 \\ 
+Choice Market & 39.744453 & -104.987074 & 4 & 197 \\ 
+Safeway & 39.755634 & -105.0242664 & 3.9 & 1636 \\ 
+Argonant Groceries & 39.7402164 & -104.9838854 & 3.9 & 11 \\ 
+King Soopers & 39.7374907 & -104.9176658 & 3.9 & 485 \\ 
+King Soopers & 39.737521 & -104.997947 & 3.8 & 1159 \\ 
+Town Grocery & 39.7574123 & -104.9736486 & 3.7 & 3 \\ 
+Rio Grande Grocery Store & 39.7290492 & -105.0022845 & 3.7 & 7 \\ 
+Safeway & 39.7486925 & -104.9775013 & 3.6 & 2352 \\ 
+Decatur Fresh & 39.7327007 & -105.0218541 & 0 & 0 \\ 
+\bottomrule
+\end{longtable}
+
+Ah. So the safeway (known to my friend as the ``unsafeway'') in question
+is actually the lowest rated grocery store in Denver (at least first 40
+hits) that has more than 1 rating. So we know we're dealing with some
+real garbage here.
+
+\hypertarget{distance}{%
+\subsection{Distance}\label{distance}}
+
+\hypertarget{haversine}{%
+\subsubsection{Haversine}\label{haversine}}
+
+In my original version of this, I just wanted to knock off and go eat
+dinner and produce a result ASAP, so I did an old standby and adjusted
+the data set to create a haversine distance from each grocery store to
+my friend's coordinates. That was simple because I already had code to
+that effect sitting around from a project in graduate school.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# degrees to radians}
+\NormalTok{deg2rad}\OtherTok{\textless{}{-}}\ControlFlowTok{function}\NormalTok{(d)\{}
+  \FunctionTok{return}\NormalTok{(d }\SpecialCharTok{*}\NormalTok{ (pi}\SpecialCharTok{/}\DecValTok{180}\NormalTok{))}
+\NormalTok{\}}
+
+\CommentTok{\# calculate haversine distance between two coordinates. }
+\NormalTok{haversine\_km}\OtherTok{\textless{}{-}}\ControlFlowTok{function}\NormalTok{(lat1,lon1,lat2,lon2)\{}
+\NormalTok{  Rad }\OtherTok{\textless{}{-}} \DecValTok{6371} \CommentTok{\# Radius of earth in km}
+\NormalTok{  dLat }\OtherTok{\textless{}{-}} \FunctionTok{deg2rad}\NormalTok{(lat2}\SpecialCharTok{{-}}\NormalTok{lat1)}
+\NormalTok{  dLon }\OtherTok{\textless{}{-}} \FunctionTok{deg2rad}\NormalTok{(lon2}\SpecialCharTok{{-}}\NormalTok{lon1)}
+\NormalTok{  a }\OtherTok{\textless{}{-}} \FunctionTok{sin}\NormalTok{(dLat}\SpecialCharTok{/}\DecValTok{2}\NormalTok{)}\SpecialCharTok{*}\FunctionTok{sin}\NormalTok{(dLat}\SpecialCharTok{/}\DecValTok{2}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{cos}\NormalTok{(}\FunctionTok{deg2rad}\NormalTok{(lat1)) }\SpecialCharTok{*} \FunctionTok{cos}\NormalTok{(}\FunctionTok{deg2rad}\NormalTok{(lat2)) }\SpecialCharTok{*} \FunctionTok{sin}\NormalTok{(dLon}\SpecialCharTok{/}\DecValTok{2}\NormalTok{) }\SpecialCharTok{*} \FunctionTok{sin}\NormalTok{(dLon}\SpecialCharTok{/}\DecValTok{2}\NormalTok{)}
+\NormalTok{  c }\OtherTok{\textless{}{-}} \DecValTok{2} \SpecialCharTok{*} \FunctionTok{atan2}\NormalTok{(}\FunctionTok{sqrt}\NormalTok{(a), }\FunctionTok{sqrt}\NormalTok{(}\DecValTok{1}\SpecialCharTok{{-}}\NormalTok{a))}
+\NormalTok{  d }\OtherTok{\textless{}{-}}\NormalTok{ Rad}\SpecialCharTok{*}\NormalTok{c }\CommentTok{\# distance in km}
+  \FunctionTok{return}\NormalTok{(d)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Then it was a simple matter of mutating a new column with that
+function\ldots. except it was at this point that I first noticed the
+problem that my variables were all in \texttt{character} and would need
+to be changed to \texttt{as.numeric} to do any kind of calculations.
+whoops.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro }\OtherTok{\textless{}{-}}\NormalTok{ gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{latitude =} \FunctionTok{as.numeric}\NormalTok{(latitude),}
+         \AttributeTok{longitude=} \FunctionTok{as.numeric}\NormalTok{(longitude),}
+         \AttributeTok{rating =} \FunctionTok{as.numeric}\NormalTok{(rating),}
+         \AttributeTok{n\_ratings =} \FunctionTok{as.numeric}\NormalTok{(n\_ratings)}
+\NormalTok{         )}
+
+\NormalTok{gro }\OtherTok{\textless{}{-}}\NormalTok{ gro}\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{haversine =} \FunctionTok{haversine\_km}\NormalTok{(latitude, longitude, arielle[}\DecValTok{1}\NormalTok{], arielle[}\DecValTok{2}\NormalTok{]))}
+\end{Highlighting}
+\end{Shaded}
+
+Having my friend's coordinates stored as a variable ended up being way
+handier than I would have anticipated and I think there's a lesson
+there. We talk about creating variables up-top and never hard coding
+numbers when avoidable, but the lesson goes the other way too, in terms
+of making a variable to save yourself time copying and pasting numbers
+even if they'll never change in the course of your coding.
+
+\hypertarget{google-route-times}{%
+\subsubsection{Google Route Times}\label{google-route-times}}
+
+At this point, I had already made a version of Visualization One down
+below, but I challenged myself to re-do it with travel time. Everyone
+knows that sometimes a closer location takes longer to get to because
+highways, traffic, and ephemera like that. This is especially true in
+American cities, where large highways can often cut off adjacent
+neighborhoods from one another. So let's dig back into that google API
+and see what they have for us.
+
+First, we do two data pulls, which are generated \emph{as} you run the
+calculations. So these calls are calculating all 20 routes from each of
+the original two \texttt{gro1} and \texttt{gro2} objects to the
+\texttt{arielle} object and generating a product called \texttt{drive\_}
+as the case needs.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# split in 2 due to rate limit of 25}
+\NormalTok{drive1 }\OtherTok{\textless{}{-}} \FunctionTok{google\_distance}\NormalTok{(}\AttributeTok{origins =}\NormalTok{ gro1[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{20}\NormalTok{, }\FunctionTok{c}\NormalTok{(}\StringTok{"latitude"}\NormalTok{, }\StringTok{"longitude"}\NormalTok{)],}
+                      \AttributeTok{destinations =}\NormalTok{ arielle,}
+                      \AttributeTok{key =}\NormalTok{ key)}
+\NormalTok{drive2 }\OtherTok{\textless{}{-}} \FunctionTok{google\_distance}\NormalTok{(}\AttributeTok{origins =}\NormalTok{ gro2[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{20}\NormalTok{, }\FunctionTok{c}\NormalTok{(}\StringTok{"latitude"}\NormalTok{, }\StringTok{"longitude"}\NormalTok{)],}
+                          \AttributeTok{destinations =}\NormalTok{ arielle,}
+                          \AttributeTok{key =}\NormalTok{ key)}
+\end{Highlighting}
+\end{Shaded}
+
+Once these are generated, I use the dirty old trick shown here to apply
+the nested data frames on to the \texttt{gro} objects from before:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# apply the nested list to the original datasets from above}
+\NormalTok{gro1}\SpecialCharTok{$}\NormalTok{drive}\OtherTok{\textless{}{-}}\NormalTok{drive1}\SpecialCharTok{$}\NormalTok{rows}\SpecialCharTok{$}\NormalTok{elements}
+\NormalTok{gro2}\SpecialCharTok{$}\NormalTok{drive}\OtherTok{\textless{}{-}}\NormalTok{drive2}\SpecialCharTok{$}\NormalTok{rows}\SpecialCharTok{$}\NormalTok{elements}
+\end{Highlighting}
+\end{Shaded}
+
+This updated both data frames so that the final variable was actually a
+list that contained multiple dataframes. See:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro2 }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{select}\NormalTok{(name, rating, drive)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 20 x 3
+##    name                          rating drive       
+##    <chr>                         <chr>  <list>      
+##  1 Sun Market                    4.9    <df [1 x 3]>
+##  2 Town & Country Market Produce 4.9    <df [1 x 3]>
+##  3 Pete's Fruits & Vegetables    4.7    <df [1 x 3]>
+##  4 Trader Joe's                  4.6    <df [1 x 3]>
+##  5 Marczyk Fine Foods            4.6    <df [1 x 3]>
+##  6 Trader Joe's                  4.5    <df [1 x 3]>
+##  7 Leevers Locavore              4.5    <df [1 x 3]>
+##  8 Natural Grocers               4.4    <df [1 x 3]>
+##  9 Park Hill Supermarket         4.4    <df [1 x 3]>
+## 10 Max Market Delicatessen       4.4    <df [1 x 3]>
+## 11 Holly Food Market             4.3    <df [1 x 3]>
+## 12 Villa Park Mini Mart          4.3    <df [1 x 3]>
+## 13 Whole Foods Market            4.2    <df [1 x 3]>
+## 14 Natural Grocers               4.2    <df [1 x 3]>
+## 15 Gem Store                     4.2    <df [1 x 3]>
+## 16 Marczyk Fine Foods            4.2    <df [1 x 3]>
+## 17 Safeway                       4.1    <df [1 x 3]>
+## 18 Choice Market                 4      <df [1 x 3]>
+## 19 Rio Grande Grocery Store      3.7    <df [1 x 3]>
+## 20 Decatur Fresh                 0      <df [1 x 3]>
+\end{verbatim}
+
+Well! That's a problem but it's on we can deal with. We're going to make
+the adjustment for each set (\texttt{gro1} and \texttt{gro2}) and then
+re-bind them together. Why not bind first and fix second? I don't know,
+I was getting a funny error for dataset 2 but not 1 and I wanted to fix
+that first and then I never went back to re-factor the code.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# unnest again, excluding distance here because we want drive time and the name overlap borks the process. }
+\CommentTok{\# we can actually get both if we want by also unnesting distance but that\textquotesingle{}s neither here nor there. }
+\NormalTok{gro1 }\OtherTok{\textless{}{-}}\NormalTok{gro1 }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{select}\NormalTok{(name, latitude, longitude, rating, n\_ratings, drive) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{unnest\_wider}\NormalTok{(drive) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{unnest\_wider}\NormalTok{(duration) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{minutes =}\NormalTok{ value}\SpecialCharTok{/}\DecValTok{60}\NormalTok{)}
+
+\CommentTok{\# fix}
+\NormalTok{gro1 }\OtherTok{\textless{}{-}}\NormalTok{gro1 }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{latitude =} \FunctionTok{as.numeric}\NormalTok{(latitude),}
+         \AttributeTok{longitude=} \FunctionTok{as.numeric}\NormalTok{(longitude),}
+         \AttributeTok{rating =} \FunctionTok{as.numeric}\NormalTok{(rating),}
+         \AttributeTok{n\_ratings =} \FunctionTok{as.numeric}\NormalTok{(n\_ratings)}
+\NormalTok{  )}
+\CommentTok{\# do all in one step. }
+\NormalTok{gro2}\OtherTok{\textless{}{-}}\NormalTok{gro2 }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{select}\NormalTok{(name, latitude, longitude, rating, n\_ratings, drive) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{unnest\_wider}\NormalTok{(drive) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{unnest\_wider}\NormalTok{(duration) }\SpecialCharTok{\%\textgreater{}\%} 
+  \CommentTok{\# assuming value = seconds (it works out to rounding)}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{minutes =}\NormalTok{ value}\SpecialCharTok{/}\DecValTok{60}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{latitude =} \FunctionTok{as.numeric}\NormalTok{(latitude),}
+         \AttributeTok{longitude=} \FunctionTok{as.numeric}\NormalTok{(longitude),}
+         \AttributeTok{rating =} \FunctionTok{as.numeric}\NormalTok{(rating),}
+         \AttributeTok{n\_ratings =} \FunctionTok{as.numeric}\NormalTok{(n\_ratings)}
+\NormalTok{  )}
+
+\CommentTok{\# bind and arrange. }
+\NormalTok{gro}\OtherTok{\textless{}{-}}\NormalTok{dplyr}\SpecialCharTok{::}\FunctionTok{bind\_rows}\NormalTok{(gro1,gro2)}
+\NormalTok{gro}\OtherTok{\textless{}{-}}\NormalTok{gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating)) }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{status)}
+
+\DocumentationTok{\#\# pro{-}tip: always append dplyr:: when using select because it often conflicts with other packages.}
+\end{Highlighting}
+\end{Shaded}
+
+A few notes: I immediately assumed that the \texttt{value} variable
+under ``duration'' was seconds, and was pleasantly rewarded when, after
+dividing that column by sixty to get a \texttt{minutes} column, that
+turned out to be true.
+
+Secondly, why did I unnest \texttt{duration} list but not unnest the
+\texttt{distance} list? Because I already had distance covered by the
+prior analysis and didn't care about google's opinion on that. I care
+about how long it takes my friend to drive there at this point.
+
+On to analysis!
+
+\hypertarget{visualization-one}{%
+\subsection{Visualization One}\label{visualization-one}}
+
+First, I generate a second data frame representing the top ten grocery
+stores. I'm going to label them on the graph but the labels for the
+crappy ones are irrelevant (barring one in particular: the unsafeway).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro\_top\_n }\OtherTok{\textless{}{-}}\NormalTok{ gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(rating)) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{head}\NormalTok{(}\DecValTok{10}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Then plug it all together to get the graph:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{filter}\NormalTok{(rating }\SpecialCharTok{\textgreater{}} \FloatTok{3.45}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ minutes, }\AttributeTok{y =}\NormalTok{ rating, }\AttributeTok{size =}\NormalTok{ n\_ratings, }\AttributeTok{color =}\NormalTok{ rating)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text\_repel}\NormalTok{(}\AttributeTok{data=}\NormalTok{ gro\_top\_n, }
+            \AttributeTok{mapping =} \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ minutes, }\AttributeTok{y =}\NormalTok{ rating, }\AttributeTok{label =}\NormalTok{ name), }
+            \AttributeTok{inherit.aes =} \ConstantTok{FALSE}\NormalTok{, }
+            \AttributeTok{fill =} \StringTok{"white"}\NormalTok{,}
+            \CommentTok{\#family = "Sofia",}
+            \AttributeTok{min.segment.length =} \DecValTok{0}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Minutes Drive Time (Google Maps)"}\NormalTok{,}
+       \AttributeTok{y =} \StringTok{"Average Rating"}\NormalTok{, }
+       \AttributeTok{title =} \StringTok{"Which Grocery Store Should Arielle Go to?"}\NormalTok{, }
+       \AttributeTok{size =} \StringTok{"Number of Ratings"}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{annotate}\NormalTok{(}\StringTok{"text"}\NormalTok{, }\AttributeTok{x =} \DecValTok{5}\NormalTok{, }\AttributeTok{y =} \FloatTok{3.5}\NormalTok{, }\AttributeTok{label =} \StringTok{"Arielle\textquotesingle{}s Terrible Safeway"}\NormalTok{, }
+           \CommentTok{\#family = "Sofia"}
+\NormalTok{           ) }\SpecialCharTok{+} 
+  \FunctionTok{scale\_color\_viridis\_c}\NormalTok{(}\AttributeTok{direction =} \SpecialCharTok{{-}}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_curve}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \DecValTok{5}\NormalTok{, }\AttributeTok{y =}  \FloatTok{3.5}\NormalTok{, }\AttributeTok{xend =} \FloatTok{1.72}\NormalTok{, }\AttributeTok{yend =}  \FloatTok{3.6}\NormalTok{),}
+             \AttributeTok{arrow =} \FunctionTok{arrow}\NormalTok{(), }\AttributeTok{size =} \FloatTok{0.2}\NormalTok{, }\AttributeTok{color =} \StringTok{"black"}\NormalTok{)}\SpecialCharTok{+} 
+  \FunctionTok{scale\_y\_continuous}\NormalTok{(}\AttributeTok{limits =} \FunctionTok{c}\NormalTok{(}\FloatTok{3.45}\NormalTok{,}\DecValTok{5}\NormalTok{)) }\SpecialCharTok{+} 
+  \FunctionTok{theme\_light}\NormalTok{() }\SpecialCharTok{+} 
+  \CommentTok{\#theme(text = ggplot2::element\_text(family = "Sofia")) +}
+  \ConstantTok{NULL}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{denvergroceries_files/figure-latex/vizone-b-1}
+
+Note that I filtered out any grocery stores whose ratings are below the
+unsafeway--that's the two that had 3.0 and 0.0 respectively, and I don't
+care about them. They were so far outlying that they were making the
+rest of the graph look warped.
+
+This was great and I was really satisfied, then my early-career-mentor
+chimed in on social media to say, why not make a voronoi diagram?
+
+\hypertarget{visualization-two}{%
+\subsection{Visualization Two}\label{visualization-two}}
+
+The first step here is to get a map that covers the area we are
+considering. First, I used the regular \texttt{get\_map} function and
+plotted all the grocery stores. Then I resized as needed until I felt
+like I had a sense of the coordinates I needed and then used those to
+generate the \texttt{boundingbox} variable required by the
+\texttt{get\_stamenmap} function. Stamen's maps are more artsy
+and--importantly--less text-laden than the google map results, which was
+important because I was going to be labeling the grocery stores and I
+needed something more clean.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{boundingbox}\OtherTok{\textless{}{-}}\FunctionTok{c}\NormalTok{(}\AttributeTok{left =} \SpecialCharTok{{-}}\FloatTok{105.025}\NormalTok{, }\AttributeTok{bottom =} \FloatTok{39.71}\NormalTok{, }\AttributeTok{right =}  \SpecialCharTok{{-}}\FloatTok{104.925}\NormalTok{, }\AttributeTok{top =}\FloatTok{39.79}\NormalTok{ )}
+\NormalTok{denver3}\OtherTok{\textless{}{-}}\FunctionTok{get\_stamenmap}\NormalTok{(boundingbox, }\AttributeTok{zoom =} \DecValTok{14}\NormalTok{, }\AttributeTok{maptype =} \StringTok{"toner{-}lite"}\NormalTok{)}
+
+\NormalTok{denver3 }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{ggmap}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{denvergroceries_files/figure-latex/get_map-1}
+
+Frustratingly, to make the layer for voronoi diagrams go all the way to
+the outer edge of the map, you have to define a separate bounding box
+for \emph{them}, which, annoyingly, has a different parameter structure
+as well--you have to give the coordinates, in order, for each individual
+corner point. The bounding box parameters were just the farthest
+longitude or latitude in each particular direction--much easiser. But
+\texttt{ggvoronoi} doesn't presume our product is a rectangle, so we
+have to give each point.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{outline.df }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{x =} \FunctionTok{c}\NormalTok{(}\SpecialCharTok{{-}}\FloatTok{105.025}\NormalTok{, }\SpecialCharTok{{-}}\FloatTok{104.925}\NormalTok{,}\SpecialCharTok{{-}}\FloatTok{104.925}\NormalTok{, }\SpecialCharTok{{-}}\FloatTok{105.025}\NormalTok{),}
+                         \AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\FloatTok{39.71}\NormalTok{, }\FloatTok{39.71}\NormalTok{,}\FloatTok{39.79}\NormalTok{, }\FloatTok{39.79}\NormalTok{))}
+\NormalTok{gro\_filtered}\OtherTok{\textless{}{-}}\NormalTok{gro }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{filter}\NormalTok{(rating }\SpecialCharTok{\textgreater{}} \FloatTok{3.5}\NormalTok{)      }
+\FunctionTok{ggmap}\NormalTok{(denver3,}
+      \CommentTok{\# base layer allows the same kind of basics that go in the original ggplot call without a map. }
+      \AttributeTok{base\_layer =} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{gro\_filtered, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ longitude,}\AttributeTok{y=}\NormalTok{latitude, }\AttributeTok{label =}\NormalTok{ name)) }
+\NormalTok{      ) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{()}\SpecialCharTok{+}
+\NormalTok{  ggvoronoi}\SpecialCharTok{::}\FunctionTok{geom\_voronoi}\NormalTok{(}
+    \FunctionTok{aes}\NormalTok{(}\AttributeTok{fill =}\NormalTok{ rating),}
+    \AttributeTok{color =} \StringTok{"black"}\NormalTok{, }
+    \AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{, }
+    \AttributeTok{outline =}\NormalTok{ outline.df) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text\_repel}\NormalTok{( }
+    \CommentTok{\#family = "Sofia",}
+                  \AttributeTok{min.segment.length =} \DecValTok{0}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{annotate}\NormalTok{(}\StringTok{"point"}\NormalTok{, }\AttributeTok{x =}\NormalTok{ arielle[}\DecValTok{2}\NormalTok{], }\AttributeTok{y =}\NormalTok{ arielle[}\DecValTok{1}\NormalTok{], }\AttributeTok{color =} \StringTok{"red"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_viridis\_c}\NormalTok{(}\AttributeTok{direction =} \SpecialCharTok{{-}}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{theme\_light}\NormalTok{() }\SpecialCharTok{+} 
+  \CommentTok{\#theme(text = ggplot2::element\_text(family = "Sofia")) +}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Longitude"}\NormalTok{,}
+       \AttributeTok{y =} \StringTok{"Latitude"}\NormalTok{, }
+       \AttributeTok{title =} \StringTok{"Which Grocery Store Should Arielle Go to?"}\NormalTok{) }\SpecialCharTok{+} 
+  \ConstantTok{NULL}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{denvergroceries_files/figure-latex/voronoi_map-1}
+
+This gets me to the real platonic ideal of this analysis: no matter
+where you are in the city, you can see where your closest grocery store
+is and what its rating is. And we can see that Arielle's red dot really
+is in the worst possible column and that she is relatively close to a
+bodega with higher ratings and a 10 minute drive to some good Trader
+Joe's locations. No need to ever go to the unsafeway again.
+
+
+
+\end{document}
