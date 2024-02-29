@@ -1,0 +1,260 @@
+---
+title: "Daily Mood Ratings and Analysis"
+author: "Andrew McCartney"
+date: "`r Sys.Date()`"
+output:
+  tufte::tufte_html: default
+  tufte::tufte_handout:
+    citation_package: natbib
+    latex_engine: xelatex
+  tufte::tufte_book:
+    citation_package: natbib
+    latex_engine: xelatex
+bibliography: skeleton.bib
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+library(tufte)
+# invalidate cache when the tufte version changes
+knitr::opts_chunk$set(cache.extra = packageVersion('tufte'))
+options(htmltools.dir.version = FALSE)
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+library(tidyverse)
+library(estimatr)
+library(stringr)
+library(ggthemes)
+library(lubridate)
+library(stargazer)
+library(gt)
+use <- function(name) {
+  # consider future support for .json? 
+  if (grepl(".csv", name)) {
+    readr::read_csv(name)
+  } else if (grepl(".xlsx", name)) {
+    readxl::read_xlsx(name)
+  } else if (grepl(".dta", name)) {
+    haven::read_dta(name)
+  } else if (grepl(".sav", name)) {
+    haven::read_spss(name)
+  } else if (grepl(".rda", name)) {
+    load(name)
+  } else {
+    stop("unknown data type.")
+  }
+}
+regress<-function(dat, formula, robust = TRUE){
+  if (robust){
+    estimatr::lm_robust(formula, data = dat) %>% 
+      sjPlot::tab_model()
+  } else {
+    lm(formula, data = dat)%>% 
+      sjPlot::tab_model()
+  }
+}
+`%not_in%` <- purrr::negate(`%in%`)
+description <- function(data, group = NULL, fast = TRUE, ...) {
+  grp <- deparse(substitute(group))
+  if (is.null(group)) {
+    result <- psych::describe(data, fast = fast, ...)
+  } else {
+    result <- psych::describeBy(data, group = group, fast = fast, mat = TRUE, ...)
+  }
+  
+  # Extract row names and select only numeric columns
+  row_names <- rownames(result)
+  numeric_data <- as.data.frame(result) %>%
+    select(where(is.numeric))
+  
+  # Attach the row names as a variable
+  if (length(row_names) > 0) {
+    numeric_data <- numeric_data %>% mutate(Rowname = row_names)
+  }
+  
+  attr(numeric_data, "group") <- grp
+  return(numeric_data)
+}
+
+
+
+
+
+
+```
+
+# Introduction
+
+`r newthought("Starting in Mid-October 2024,")` I downloaded an app^[to wit, Dailybean; thanks tiktok] that allows you to rate your mood once daily. I use an alarm at 8:30 pm to rate my mood each day. The app also allows you to indicate what you were feeling that day^[e.g. gloomy, happy, etc] and what kinds of social interactions you had that day^[e.g. family, acquaintance, none]. Starting in November, I began making a daily graph with a loess trend-line to see what the trend in my mood over time has been. 
+
+After about 120 days' worth of ratings, I began to do deeper analyses on the data^[which are almost all binary or essentially qualitative descriptions] to track trends in mood. 
+
+Beginning in February 2024, I turned the analyses I was running into a daily report that contains ongoing analyses so that after I input last night's data, I can get all of my typical questions re-calculated at the click of a button. 
+
+# Data
+
+Pull the data from excel and display the first few days. 
+
+```{r data, echo = FALSE}
+dat<-use("C:\\Users\\Andrew.Mccartney2\\Desktop\\daily_mood\\dailybean.xlsx") %>% 
+  mutate(day = ymd(day))
+dat %>% glimpse()
+```
+
+# Daily Mood Over Time
+
+`r newthought("How has mood changed over time")`, in general?^[In a previous version of this graph I "jittered" the points to give it more liveliness, but the jitters were obscuring the actual values of the ratings more than I wanted and adjusting them by functional arguments didn't solve the problem to my liking.] In this plot, I have also marked significant days and holidays as annotations; e.g. my trip to Colorado to see Katrina and Arielle as well as Valentines day, etc. The unmarked line at the end of January is my coffee date with Ashley. The unmarked line at the beginning of March is the anniversary of Laura's text.
+
+```{r plot1, fig.fullwidth = TRUE, echo = FALSE, fig.width = 10}
+dat %>% 
+  ggplot(aes(x=(day), y = rating))+
+  geom_point(size = 2)+
+  geom_smooth(span = 0.2, se = T, linewidth = 2, color = "#828585")+
+  #coord_polar()+
+  scale_x_date()+
+  labs(title = "Daily Mood Rating", 
+       subtitle = "Recorded at 8:30pm via dailybean app")+
+  annotate("text", x = mdy("11/25/23"), y = 4, label = "Thanksgiving")+
+  annotate("text", x = mdy("11/11/23"), y = 4.5, label = "Colorado")+
+  geom_vline(xintercept=mdy("11/23/23"))+
+  geom_vline(xintercept = mdy("12/25/23"))+
+  geom_vline(xintercept = mdy("12/31/23"))+
+  geom_vline(xintercept = mdy("12/28/23"))+
+  annotate("text", x = mdy("12/28/23"), y = 4.25, label= "Birthday")+
+  scale_y_continuous(limits = c(1,5))+
+  annotate('text', x = mdy("12/31/23"), y = 4.5, label="NYE")+
+  geom_vline(xintercept = mdy("01/28/2024")) + 
+  geom_vline(xintercept = mdy("03/05/2024")) +
+  annotate('text', x = mdy("02/14/2024"), y = 4.5, label = "VDay")+
+  theme_tufte()+
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  guides(color = "none")+
+  NULL
+```
+
+# Is there a cyclical effect? 
+
+As of February 2024, there appears to be a cyclical or sinusoidal pattern to my mood ratings. In this version of the plot, I have taken each month as a different factor and plotted its loess smoothed line, along with adding a grey line that indicates the loess smoothing of all of the months in the data set. There *does* appear to be a weak pattern of rise and fall peaking around the 10th of every month and falling around the 20th, but that's probably just coincidences based on the fact that November and December both have holidays near the 20th of the month which depress scores. 
+
+More data are likely needed, at which point auto-regressive techniques might become necessary to determine real longterm patterns of growth. 
+
+```{r plot cyclical, fig.fullwidth = TRUE, echo = FALSE, fig.width = 10}
+
+  dat %>% 
+    ggplot(aes(x=mday(day), y = rating, 
+    ))+
+    geom_jitter(size = 2)+
+    geom_smooth(span = 0.6, se = F, linewidth = 1.5, color = "#bbbbbb", aes(group = factor(month(day))))+
+    geom_smooth(span = 0.6, se = F, linewidth = 3, color = "#333333")+
+    labs(title = "Daily Mood Rating", 
+        subtitle = "Recorded at 8:30pm via dailybean app")+
+    theme_tufte()+
+    theme(plot.background = element_rect(fill = "#fffff8"))+
+    guides(color = "none")+
+    NULL
+
+```
+
+# Modeling
+
+`r newthought("What can we learn from the data?")` Beware that linear modeling over these data is bound to be problematic given the aforementioned sinusoidal nature; however, even if there is no strong linear trend, controlling for time is probably still at least a little helpful. Other qualitative factors are included as listed. 
+
+### Data Description
+
+```{r describe, echo = FALSE}
+
+dat %>% 
+description() %>% 
+  as_tibble() %>% 
+  select(Rowname, everything()) %>% 
+  select(-vars) %>% 
+  mutate(mean = round(mean, 2),
+         sd = round(sd, 2), 
+         se = round(se, 2),
+         ) %>% 
+  knitr::kable(caption = "Remember that the mean of a binary indicator is the % of the times the value is 'true'")
+
+```
+
+## Relationships
+
+First, controlling for any effect of time (date), is mood better on days when I am with certain groups, to wit family, friends, acquaintances? The reference group is "none" days where I don't socialize with anyone. A work day is considered a "none" day unless I socialize with coworkers outside of work^[e.g. a happy hour]. Holidays are included as a control since they are strongly associated in the data with negative ratings.^[i.e., what is the effect of being around my family while controlling for the effect of it being on a holiday?]
+
+``` {r model 1, echo = FALSE}
+
+dat %>% 
+  lm_robust(rating~day + holiday+ social_acquaintaince + social_friend+ social_family, data = .) -> m1
+
+dat %>% 
+  lm_robust(rating~day + social_acquaintaince + social_friend+ social_family, data = .) -> m2
+
+sjPlot::tab_model(m1, m2)
+
+
+```
+
+## Weekday 
+
+Is there a weekday effect? Am I of higher mood on the weekdays? "Intercept" here means Sunday and weekdays are listed numerically after that. Looks like I do better on the weekdays but it's not statistically significant. 
+
+``` {r weekdays, echo = FALSE}
+
+dat %>%
+   regress(rating ~ factor(weekday) + holiday)
+
+```
+
+## Emotions
+
+What are my most common feelings? How often do I rate a day as having contained that emotion? 
+```{r feelings, echo = FALSE}
+
+means <- dat %>% 
+  summarize(across(where(is.numeric),  mean)) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column() %>% 
+  as_tibble() %>% 
+  rename(variable = rowname, mean = V1)
+feelings <- means %>% 
+  filter(str_detect(variable, "feeling"))
+feelings %>% 
+  arrange(desc(mean)) %>%
+  ggplot(aes(x = mean, y = fct_reorder(variable, mean))) + 
+  geom_col(fill = "black")+
+  scale_x_continuous(labels = scales::percent, n.breaks = 10)+
+  theme_tufte()+
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  labs(
+    title = "feelings by frequency",
+    x = "% of days feeling this",
+    y = "Feeling"
+  )
+```
+
+# The holiday effect
+
+`r newthought("I lied before")` when I said holidays were strongly negatively associated with lower mood. This is an artifact in the data due to really bad times around Thanksgiving and Christmas. A t-test can be used to determine this effect. However, the t-test is so unbalanced^[the idea being that with currently 119 regular days and 6 holidays, it almost doesn't matter what the effect of holidays is, a t-test won't pick it up. Nevertheless!] that the standard errors get blown to all hell and it's worse than worthless. Some holidays suck, some holidays are anodyne. Nevertheless, I'm going to keep it as a control for other models. 
+
+```{r, echo = FALSE}
+dat %>% 
+  group_by(holiday) %>% 
+  count() %>% 
+  mutate(holiday = if_else(holiday==1,"yes", "no"), 
+         number = n) %>%
+  select(holiday, number) %>% 
+  knitr::kable(table.attr = "style='width:30%;'")
+```
+
+
+As you can see, we are incredibly unbalanced, but for kicks: 
+
+
+```{r holidaytest, echo = FALSE}
+
+
+dat %>% 
+  regress(rating ~ holiday)
+
+```
