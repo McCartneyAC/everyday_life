@@ -1,0 +1,210 @@
+---
+title: "Daily Mood Ratings and Analysis"
+author: "Andrew McCartney"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    fig_width: 8
+    fig_height: 6
+    fig_caption: true
+    toc: true
+    toc_float: true
+    theme: united
+    df_print: paged
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+library(tidyverse)
+library(estimatr)
+library(stringr)
+library(lubridate)
+library(gt)
+library(ggpomological)
+use <- function(name) {
+  # consider future support for .json? 
+  if (grepl(".csv", name)) {
+    readr::read_csv(name)
+  } else if (grepl(".xlsx", name)) {
+    readxl::read_xlsx(name)
+  } else if (grepl(".dta", name)) {
+    haven::read_dta(name)
+  } else if (grepl(".sav", name)) {
+    haven::read_spss(name)
+  } else if (grepl(".rda", name)) {
+    load(name)
+  } else {
+    stop("unknown data type.")
+  }
+}
+regress<-function(dat, formula, robust = TRUE){
+  if (robust){
+    estimatr::lm_robust(formula, data = dat) %>% 
+      sjPlot::tab_model()
+  } else {
+    lm(formula, data = dat)%>% 
+      sjPlot::tab_model()
+  }
+}
+library(extrafont); loadfonts()
+
+theme_typewriter <- function() {
+  ggplot2::theme_light()+
+    ggplot2::theme(text = ggplot2::element_text(family = "Special Elite")) 
+}
+`%not_in%` <- purrr::negate(`%in%`)
+
+
+
+
+```
+
+
+## Introduction
+
+Starting in Mid-October 18, I downloaded an app (thanks tiktok) that allows you to rate your mood once daily. I use an alarm at 8:30 pm to rate my mood each day. The app also allows you to indicate what you were feeling that day (e.g. gloomy, happy, etc) and what kinds of social interactions you had that day (e.g. family, acquaintance, none). Starting in November, I began making a daily graph with a loess trend-line to see what the trend in my mood over time has been. 
+
+After about 120 days' worth of ratings, I began to do deeper analyses on the data (which are almost all binary or essentially qualitative descriptions) to track trends in mood. 
+
+Beginning in February 2024, I turned the analyses I was running into a daily report that contains ongoing analyses so that after I input last night's data, I can get all of my typical questions re-calculated at the click of a button. 
+
+## Data
+
+Pull the data from excel and display the first few days. 
+
+```{r data}
+dat<-use("C:\\Users\\Andrew.Mccartney2\\Documents\\dailybean.xlsx")%>% 
+  mutate(date = ymd(date))
+dat %>% glimpse()
+```
+
+## Daily Mood Over Time
+
+How has mood changed over time, in general? In this plot, I have also marked significant days and holidays as annotations; e.g. my trip to Colorado to see Katrina and Arielle as well as Valentines day, etc. The unmarked line at the end of January is my coffee date with Ashley. The unmarked line at the beginning of March is the anniversary of Laura's text. 
+In a previous version of this graph I "jittered" the points to give it more liveliness, but the jitters were obscuring the actual values of the ratings more than I wanted and adjusting them by functional arguments didn't solve the problem to my liking. 
+
+```{r plot1}
+dat %>% 
+  ggplot(aes(x=(date), y = rating, 
+             color = rating
+             ))+
+  geom_point(size = 2)+
+  geom_smooth(span = 0.2, se = T, linewidth = 2, color = "#828585")+
+  #coord_polar()+
+  scale_x_date()+
+  labs(title = "Daily Mood Rating", 
+       subtitle = "Recorded at 8:30pm via dailybean app")+
+  annotate("text", x = mdy("11/25/23"), y = 4, label = "Thanksgiving")+
+  annotate("text", x = mdy("11/11/23"), y = 4.5, label = "Colorado")+
+  geom_vline(xintercept=mdy("11/23/23"))+
+  geom_vline(xintercept = mdy("12/25/23"))+
+  geom_vline(xintercept = mdy("12/31/23"))+
+  geom_vline(xintercept = mdy("12/28/23"))+
+  annotate("text", x = mdy("12/28/23"), y = 4.25, label= "Birthday")+
+  scale_y_continuous(limits = c(1,5))+
+  annotate('text', x = mdy("12/31/23"), y = 4.5, label="NYE")+
+  geom_vline(xintercept = mdy("01/28/2024")) + 
+  geom_vline(xintercept = mdy("03/05/2024")) +
+  annotate('text', x = mdy("02/14/2024"), y = 4.5, label = "VDay")+
+  scale_color_gradient(low = "#C03728", high = "#c3c377")+
+  theme_pomological()+
+  guides(color = "none")+
+  NULL
+```
+
+## Is there a cyclical effect? 
+
+As of February 2024, there appears to be a cyclical or sinusoidal pattern to my mood ratings. In this version of the plot, I have taken each month as a different factor and plotted its loess smoothed line, along with adding a grey line that indicates the loess smoothing of all of the months in the data set. There *does* appear to be a weak pattern of rise and fall peaking around the 10th of every month and falling around the 20th, but that's probably just coincidences based on the fact that November and December both have holidays near the 20th of the month which depress scores. 
+
+More data are likely needed, at which point auto-regressive techniques might become necessary to determine real longterm patterns of growth. 
+
+```{r plot cyclical}
+
+  dat %>% 
+    ggplot(aes(x=mday(date), y = rating, 
+    ))+
+    geom_jitter(size = 2)+
+    geom_smooth(span = 0.6, se = F, linewidth = 1.5, aes(color = factor(month(date))))+
+    geom_smooth(span = 0.6, se = F, linewidth = 3, color = "grey")+
+    labs(title = "Daily Mood Rating", 
+       subtitle = "Recorded at 8:30pm via dailybean app")+
+    theme_pomological()+
+    guides(color = "none")+
+    NULL
+
+```
+
+
+## Modeling
+
+What can we learn from the data? Beware that linear modeling over these data is bound to be problematic given the aforementioned sinusoidal nature; however, even if there is no strong linear trend, controlling for time is probably still at least a little helpful. Other qualitative factors are included as listed. 
+
+### Data Description
+
+```{r describe}
+dat %>%
+  mccrr::description(  )
+
+```
+
+### Relationships
+
+First, controlling for any effect of time (date), is mood better on days when I am with certain groups, to wit family, friends, acquaintances? The reference group is "none" days where I don't socialize with anyone. A work day is considered a "none" day unless I socialize with coworkers outside of work (e.g. a happy hour). Holidays are included as a control since they are strongly associated in the data with negative ratings. (i.e., what is the effect of being around my family while controlling for the effect of it being on a holiday? )
+
+``` {r model 1}
+
+
+
+dat %>% 
+  lm_robust(rating~date + holiday+ social_acquaintaince + social_friend+ social_family, data = .) -> m1
+
+dat %>% 
+  lm_robust(rating~date + social_acquaintaince + social_friend+ social_family, data = .) -> m2
+
+sjPlot::tab_model(m1, m2)
+
+```
+
+### Weekday 
+
+Is there a weekday effect? Am I of higher mood on the weekdays? "Intercept" here means Sunday and weekdays are listed numerically after that. Looks like I do better on the weekdays but it's not statistically significant. 
+
+``` {r weekdays}
+
+dat %>%
+   regress(rating ~ factor(weekday) + holiday)
+
+```
+
+
+## Emotions
+
+What are my most common feelings? How often do I rate a day as having contained that emotion? 
+
+```{r feelings}
+
+means <- dat %>% 
+  summarize(across(where(is.numeric),  mean)) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column() %>% 
+  as_tibble() %>% 
+  rename(variable = rowname, mean = V1)
+feelings <- means %>% 
+  filter(str_detect(variable, "feeling"))
+feelings %>% 
+  arrange(desc(mean)) %>%
+  ggplot(aes(x = mean, y = fct_reorder(variable, mean), fill = mean)) + 
+  geom_col()+
+  scale_x_continuous(labels = scales::percent, n.breaks = 10)+
+  theme_pomological()+
+  scale_fill_gradient(low = "#C03728", high = "#c3c377")+
+  labs(
+    title = "feelings by frequency",
+    x = "% of days feeling this",
+    y = "Feeling"
+  )
+```
