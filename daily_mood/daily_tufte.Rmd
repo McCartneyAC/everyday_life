@@ -204,6 +204,26 @@ dat %>%
    regress(rating ~ factor(weekday) + holiday)
 
 ```
+But I suppose if we wanted, we could say, recode Saturday and Sunday into a binary indicator for weekend and see what the result is, though it'll be unbalanced in a 5:2 ratio^[and see later where the holiday variable is completely unbalanced.]
+
+```{r weekends, echo = FALSE}
+
+dat %>% 
+  mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
+  select(rating, weekday, weekend) %>% 
+  regress(rating ~ weekend)
+
+
+```
+
+At the time I'm writing this, this analysis is approaching statistical significance, so maybe over time it's approached it? I do worry about the balance of the variables, though, so just to double check...
+
+```{r weekend levene, echo = FALSE}
+dat %>% 
+  mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
+  select(rating, weekday, weekend) %>% 
+  car::leveneTest(rating~factor(weekend), data = .)
+```
 
 ## Emotions
 
