@@ -25,10 +25,14 @@ knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 library(tidyverse)
 library(estimatr)
 library(stringr)
+library(pROC)
+
 library(ggthemes)
 library(lubridate)
-library(stargazer)
 library(gt)
+library(igraph)
+library(tidygraph)
+library(ggraph)
 use <- function(name) {
   # consider future support for .json? 
   if (grepl(".csv", name)) {
@@ -45,16 +49,28 @@ use <- function(name) {
     stop("unknown data type.")
   }
 }
-regress<-function(dat, formula, robust = TRUE){
-  if (robust){
-    estimatr::lm_robust(formula, data = dat) %>% 
-      sjPlot::tab_model()
-  } else {
-    lm(formula, data = dat)%>% 
-      sjPlot::tab_model()
+regress <- function(dat,
+                    formula,
+                    clusters = NULL,
+                    robust = TRUE,
+                    logistic = FALSE) {
+  if (!logistic) {
+    if (robust) {
+      mod <- estimatr::lm_robust(formula, clusters = clusters, data = dat) 
+    } else {
+      mod <- lm(formula, data = dat) 
+    }
+  } else if (logistic) {
+    if (robust) {
+      mod <- robust::glmRob(formula, data = dat, family = binomial(), method = "cubif")
+    } else {
+      mod <- glm(formula, data = dat, family = "binomial") 
+    }
   }
+  sjPlot::tab_model(mod)
 }
 `%not_in%` <- purrr::negate(`%in%`)
+`%notin%` <- `%not_in%`
 description <- function(data, group = NULL, fast = TRUE, ...) {
   grp <- deparse(substitute(group))
   if (is.null(group)) {
@@ -86,58 +102,142 @@ description <- function(data, group = NULL, fast = TRUE, ...) {
 
 # Introduction
 
-`r newthought("Starting in Mid-October 2024,")` I downloaded an app^[to wit, Dailybean; thanks tiktok] that allows you to rate your mood once daily. I use an alarm at 8:30 pm to rate my mood each day. The app also allows you to indicate what you were feeling that day^[e.g. gloomy, happy, etc] and what kinds of social interactions you had that day^[e.g. family, acquaintance, none]. Starting in November, I began making a daily graph with a loess trend-line to see what the trend in my mood over time has been. 
+`r newthought("Starting in Mid-October 2024,")` I downloaded an app^[to wit, Dailybean; thanks tiktok] that allows you to rate your mood once daily^[See below. Is it really "mood"?]. I use an alarm at 8:30 pm to rate each day. The app also allows you to indicate what you were feeling that day^[e.g. gloomy, happy, etc] and what kinds of social interactions you had that day^[e.g. family, acquaintance, none]. I have also started including small qualitative notes and things, such as "hungover" or by including a photograph of something significant from that day.^[Recently this has included a binary indicator for a "Tess" day; it would probably be helpful to go back through my google calendar and formalize this because I do tend to feel better on Tess days.] Starting in November, I began making a daily graph with a LOESS trend-line to see what the trend in my mood over time has been, at that point it being about a month's worth of data.  
 
 After about 120 days' worth of ratings, I began to do deeper analyses on the data^[which are almost all binary or essentially qualitative descriptions] to track trends in mood. 
 
-Beginning in February 2024, I turned the analyses I was running into a daily report that contains ongoing analyses so that after I input last night's data, I can get all of my typical questions re-calculated at the click of a button. 
+Beginning in February 2024, I turned the analyses I was running into a daily report that contains ongoing analyses so that after I input last night's data, I can get all of my typical questions re-calculated at the click of a button. Most parts of this document change only very slowly, so the inclusion of a new day's data is almost irrelevant. 
 
 # Data
 
-Pull the data from excel and display the first few days. 
+Pull the data from excel and display the first few days and first few variables. Maybe I'm too much of an old excel-head, but if I can't see the raw data to start with, it really feels like I'm missing something in the analysis. I just wanna see what it looks like. Something important to note here for the analysts reading is that I have every day in the dataset, even if I forgot to rate that day, in order to allow calendar-style structuring. Then I just delineate a raw versus main dataset to use--here we have the main one with no missing data:  
 
-```{r data, echo = FALSE}
-dat<-use("C:\\Users\\Andrew.Mccartney2\\Desktop\\daily_mood\\dailybean.xlsx") %>% 
+```{r data, echo = FALSE, fig.width = 12}
+dat_raw<-use("C:\\Users\\Andrew.Mccartney2\\Desktop\\daily_mood\\dailybean.xlsx") %>% 
   mutate(day = ymd(day))
-dat %>% glimpse()
+dat <- dat_raw %>% 
+  dplyr::filter(!is.na(rating))
+dat %>%
+  dplyr::select(1:8) %>% 
+  head(10) %>% 
+  knitr::kable()
 ```
 
-# Daily Mood Over Time
+# Daily Mood 
+
+`r newthought("Taking as our starting point")` *just* the mood ratings data, what do we see? It's tough to think about this because the daily rating doesn't *really* mean my mood, but some ephemeral overall sense of how good or bad the day was. A 5 day tends to have multiple nice things in it--the most recent one being a day I got an official job offer while also meeting a new potential romantic interest while also hanging with a longtime friend I hadn't seen in person in a decade.^[The first question is just... what is the distribution of my outcome variable? That is to say, am I usually a 1, or usually a 5, or what? This was pretty obvious to me at first because of course I see the raw data, but in the interest of being a good analyst we should always check our outcome distribution.] But that day probably was more like a "6" and we just have to deal with some kind of right/left censoring problem. A 1 day is usually a day that I'm wallowing in some kind of depressive/angry state...often involving alcohol and loneliness. 
+
+```{r outcome distribution, fig.margin = TRUE, echo = FALSE}
+
+dat %>% 
+  ggplot(aes(x = rating))+
+  geom_histogram(bins = 5, fill = "black", color = "#fffff8")+
+  theme_tufte()+
+  theme(plot.background = element_rect(fill = "#fffff8"))
+```
+Originally these data were fairly normally distributed, but now there's a skew where most of the data points are slightly negative of a good normal distribution around 3. See below for statistical details.
+
+```{r qqplot, echo = FALSE}
+# dat %>% 
+# ggplot(aes(sample = rating)) +
+#   stat_qq() +
+#   stat_qq_line(col = "red") +
+#   theme_minimal() +
+#   labs(title = "Q-Q Plot",
+#        x = "Theoretical Quantiles",
+#        y = "Sample Quantiles")
+
+```
+
+
+## Daily Mood over time
 
 `r newthought("How has mood changed over time")`, in general?^[In a previous version of this graph I "jittered" the points to give it more liveliness, but the jitters were obscuring the actual values of the ratings more than I wanted and adjusting them by functional arguments didn't solve the problem to my liking.] In this plot, I have also marked significant days and holidays as annotations; e.g. my trip to Colorado to see Katrina and Arielle as well as Valentines day, etc. The unmarked line at the end of January is my coffee date with Ashley. The unmarked line at the beginning of March is the anniversary of Laura's text.
 
-```{r plot1, fig.fullwidth = TRUE, echo = FALSE, fig.width = 10}
+```{r plot1, fig.fullwidth = TRUE, echo = FALSE, fig.width = 12}
 dat %>% 
   ggplot(aes(x=(day), y = rating))+
   geom_point(size = 2)+
-  geom_smooth(span = 0.2, se = T, linewidth = 2, color = "#828585")+
+  geom_smooth(span = 0.16, se = T, linewidth = 2, color = "#828585")+
   #coord_polar()+
-  scale_x_date()+
+  scale_x_date(breaks = c(
+    ym("2023/10"),
+    ym("2023/11"),
+    ym("2023/12"),
+    ym("2024/01"),
+    ym("2024/02"),
+    ym("2024/03"),
+    ym("2024/04"),
+    ym("2024/05"),
+    ym("2024/06")
+  ),
+    date_labels = "%b" )+
+  geom_rangeframe()+
   labs(title = "Daily Mood Rating", 
        subtitle = "Recorded at 8:30pm via dailybean app")+
-  annotate("text", x = mdy("11/25/23"), y = 4, label = "Thanksgiving")+
-  annotate("text", x = mdy("11/11/23"), y = 4.5, label = "Colorado")+
-  geom_vline(xintercept=mdy("11/23/23"))+
-  geom_vline(xintercept = mdy("12/25/23"))+
-  geom_vline(xintercept = mdy("12/31/23"))+
-  geom_vline(xintercept = mdy("12/28/23"))+
-  annotate("text", x = mdy("12/28/23"), y = 4.25, label= "Birthday")+
-  scale_y_continuous(limits = c(1,5))+
-  annotate('text', x = mdy("12/31/23"), y = 4.5, label="NYE")+
-  geom_vline(xintercept = mdy("01/28/2024")) + 
-  geom_vline(xintercept = mdy("03/05/2024")) +
-  annotate('text', x = mdy("02/14/2024"), y = 4.5, label = "VDay")+
+  annotate("text", x = mdy("11/25/23"), y = 4.8, label = "Thanksgiving", family= "serif")+
+  annotate("text", x = mdy("11/11/23"), y = 5.15, label = "Colorado", family= "serif")+
+  annotate("segment", x = mdy("11/11/23"), xend = mdy("11/15/23"), y = 5, yend = 5)+
+  annotate("segment", x = mdy("05/03/24"), xend = mdy("05/14/24"), y = 5, yend = 5)+
+  annotate("segment", x= mdy("04/15/24"), xend = mdy("04/20/24"), y = 5, yend = 5)+
+  annotate("text", x = mdy("05/09/24"), y = 5.1, label = "Erin", family= "serif")+
+  annotate("text", x = mdy("12/28/23"), y = 5, label= "Birthday", family= "serif")+
+  scale_y_continuous(limits = c(1,5.3), breaks = 1:5)+
+  #annotate('text', x = mdy("12/31/23"), y = 5.05, label="NYE")+
+  annotate("text", x = mdy("01/28/2024"), y = 5.05, label = "Ashley", family= "serif")+
+  annotate("text", x = mdy("03/05/2024"), y = 5.05, label = "1 year", family= "serif")+
+  annotate('text', x = mdy("02/14/2024"), y = 4.5, label = "VDay", family= "serif")+
+  annotate('text', x = mdy("04/18/2024"), y = 5.1, label = "Ireland", family= "serif")+
+  annotate('text', x = mdy("06/17/2024"), y = 5.05, label = "LDOC", family= "serif")+
   theme_tufte()+
   theme(plot.background = element_rect(fill = "#fffff8"))+
   guides(color = "none")+
+  coord_cartesian(clip = "off")+
+  labs(
+    x = ""
+  )+
   NULL
 ```
 
-# Is there a cyclical effect? 
+I think the biggest story here is that it tends to waffle, which I will address below. Other than that, it tends to stay between 2 and 4, indicating a *general* level of equanimity even when I'm having various particularly bad or good days. But of course that's also a judgment based on my LOESS smoothing parameter. 
 
-As of February 2024, there appears to be a cyclical or sinusoidal pattern to my mood ratings. In this version of the plot, I have taken each month as a different factor and plotted its loess smoothed line, along with adding a grey line that indicates the loess smoothing of all of the months in the data set. There *does* appear to be a weak pattern of rise and fall peaking around the 10th of every month and falling around the 20th, but that's probably just coincidences based on the fact that November and December both have holidays near the 20th of the month which depress scores. 
+```{r fig.margin = TRUE, echo = FALSE}
+dat_raw %>%
+  group_by(weekday) %>%
+  mutate(week = row_number()) %>%
+  # dplyr::select(day, weekday, week) %>%  #man that was easy. I'm getting good at this.
+  # not as good as you think you are, dummy.
+  # looks like the issue is that the NAs are being recoded around things. This can be
+  # fixed if I re-enter every single missing day, but that's going to require every
+  # other call to remove all NA weeks. Sigh.
+  ggplot(aes(x = factor(weekday), y = week, fill = rating, label = rating
+             )) +
+  scale_y_reverse() +
+  geom_tile() +
+  scale_fill_gradient(low = "#999999", high = "#000000",na.value="#fffff8") +
+  labs(x = "", y = "", title = "Rating Heat Map") +
+  guides(fill = "none") +
+  scale_x_discrete(labels = c(
+    "1" = "Sunday", 
+    "2" = "Monday", 
+    "3" = "Tuesday", 
+    "4" = "Wednesday", 
+    "5" = "Thursday",
+    "6" = "Friday", 
+    "7" = "Saturday")) +
+  #scale_y_continuous(labels = NULL, breaks = NULL)+
+  theme_tufte() +
+  theme(plot.background = element_rect(fill = "#fffff8")) +
+  NULL
+```
 
-More data are likely needed, at which point auto-regressive techniques might become necessary to determine real longterm patterns of growth. 
+## Is there a cyclical effect? 
+
+As of February 2024, there appeared to be a cyclical or sinusoidal pattern to my mood ratings. In this version of the plot, I have taken each month as a different factor and plotted its loess smoothed line, along with adding a darker grey line that indicates the loess smoothing of all of the months in the data set. There *did* appear to be a weak pattern of rise and fall peaking around the 10th of every month and falling around the 20th, but that trend appears to be gone now. The sinusoidal nature is still there in the original data, more or less, but it's not pegged to any particular time frame. It's just...the natural ups and downs of living life, I think.^[My original hypothesis here was that there was a strong effect of November and December both having holidays near the 20th of the month which depressed the scores. There's no real trend for *all* holidays, but I sure do hate *those* holidays]
+
+
+More data are likely needed if I really wanted to nail this down using time series techniques, at which point auto-regressive techniques might become necessary to determine real long term patterns of growth. 
+
 
 ```{r plot cyclical, fig.fullwidth = TRUE, echo = FALSE, fig.width = 10}
 
@@ -145,30 +245,39 @@ More data are likely needed, at which point auto-regressive techniques might bec
     ggplot(aes(x=mday(day), y = rating, 
     ))+
     geom_jitter(size = 2)+
-    geom_smooth(span = 0.6, se = F, linewidth = 1.5, color = "#bbbbbb", aes(group = factor(month(day))))+
-    geom_smooth(span = 0.6, se = F, linewidth = 3, color = "#333333")+
+    geom_rangeframe()+
+    geom_smooth(span = 0.6, se = F, linewidth = 1.5, color = "#777777",
+                aes(group = factor(month(day)))
+                  #color = factor(month(day)))
+                )+
+    geom_smooth(span = 0.7, se = F, linewidth = 3, color = "#111111")+
     labs(title = "Daily Mood Rating", 
         subtitle = "Recorded at 8:30pm via dailybean app")+
     theme_tufte()+
     theme(plot.background = element_rect(fill = "#fffff8"))+
     guides(color = "none")+
+    labs(x = "")+
     NULL
 
 ```
 
+**Update as of 3/19/24:** Tess and I have discussed and the going theory is not that I have a depressive episode every time I ovulate--go figure. Instead, the current thesis is that when I start to feel too good I self sabotage or lean into wallowing/moping behaviors in order to justify the authenticity of my depression or "honor" my loss in some way by not allowing myself to be too happy. That this appears to happen on a monthly cycle is just a coincidence based on how long it takes me to kick^[or, for that matter, *kick off*] a new depressive cycle. The 'flattest' area of the loess smoothed time series occurs right after that realization, where I really made a consistent effort to not sabotage or wallow. But then back to the normal pattern after that :/ 
+
 # Modeling
 
-`r newthought("What can we learn from the data?")` Beware that linear modeling over these data is bound to be problematic given the aforementioned sinusoidal nature; however, even if there is no strong linear trend, controlling for time is probably still at least a little helpful. Other qualitative factors are included as listed. 
+`r newthought("What can we learn from the data?")` Beware that linear modeling over these data is bound to be problematic given the aforementioned sinusoidal nature; however, even if there is no strong linear trend, controlling for time is probably still at least a little helpful. Other qualitative factors are included as listed. Ultimately, these data are limited by being either fully binary (almost every variable) or being ordinal with a restricted range (ratings, weekdays). The only truly good continuous ratio variable is date, which again isn't going to swallow up a lot of variance. 
 
-### Data Description
+Anyway, before we do any modeling let's take a look at the dataset as a whole: 
+
+## Data Description
 
 ```{r describe, echo = FALSE}
 
 dat %>% 
 description() %>% 
   as_tibble() %>% 
-  select(Rowname, everything()) %>% 
-  select(-vars) %>% 
+  dplyr::select(Rowname, everything()) %>% 
+  dplyr::select(-vars) %>% 
   mutate(mean = round(mean, 2),
          sd = round(sd, 2), 
          se = round(se, 2),
@@ -177,11 +286,13 @@ description() %>%
 
 ```
 
+As we look deeper into the data and feelings, please note that as of 5/7/2024, the column "feeling gloomy" was changed to "Feeling depressed" and the variable "feeling burdensome" was changed to "feeling pressured" which is obviously going to slightly change the nature of those variables. I'm glad the app did an update and especially glad that "feeling burdensome" was changed to better reflect its meaning; however, there is definitely a pre- and post- in terms of interpreting these two. 
+
 ## Relationships
 
-First, controlling for any effect of time (date), is mood better on days when I am with certain groups, to wit family, friends, acquaintances? The reference group is "none" days where I don't socialize with anyone. A work day is considered a "none" day unless I socialize with coworkers outside of work^[e.g. a happy hour]. Holidays are included as a control since they are strongly associated in the data with negative ratings.^[i.e., what is the effect of being around my family while controlling for the effect of it being on a holiday?]
+First, controlling for any effect of time (date), is mood better on days when I am with certain groups, to wit family, friends, acquaintances? The reference group is "none" days where I don't socialize with anyone. A work day is considered a "none" day unless I socialize with coworkers outside of work^[e.g. a happy hour]. Holidays are included as a control since they are strongly associated in the data with negative ratings^[This was an observation ahead of itself. Thanksgiving and Christmas were low points, but not every holiday is so bad. It's almost impossible to characterize holidays as uniformly low when there's only a handful every year and they're highly variable]. 
 
-``` {r model 1, echo = FALSE}
+``` {r model relationships, echo = FALSE}
 
 dat %>% 
   lm_robust(rating~day + holiday+ social_acquaintaince + social_friend+ social_family, data = .) -> m1
@@ -194,66 +305,319 @@ sjPlot::tab_model(m1, m2)
 
 ```
 
+These have been variable over the course of the data collection process; initially family was associated with a decrease in rating and friends with an increase. Friends has remained fairly robust, but now family is a baseline day and acquaintaince appears to give some benefit. Probably would need several years' worth of data for me to consider these data truly trustworthy, but that's an initial finging at least. 
+
 ## Weekday 
 
-Is there a weekday effect? Am I of higher mood on the weekdays? "Intercept" here means Sunday and weekdays are listed numerically after that. Looks like I do better on the weekdays but it's not statistically significant. 
+```{r weekdays, fig.margin = TRUE, echo = FALSE}
+dat %>% 
+  ggplot(aes(y = rating, x = factor(weekday), group = factor(weekday)))+
+  geom_tufteboxplot(median.type = "line", whisker.type = "point", hoffset = 0, size = 2)+
+  theme_tufte()+
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  labs(x = "weekday", y = "avg rating")
+```
 
-``` {r weekdays, echo = FALSE}
+Is there a weekday effect? Am I of higher mood on the weekdays? "Intercept" here means Sunday and weekdays are listed numerically after that. Initially it looked like Saturday and Sunday were high but every other day was low; however, after moving some life things around and entering in lots more data, the weekdays things have all but become irrelevant. 
+
+
+``` {r model weekdays, echo = FALSE}
 
 dat %>%
+  # mutate(weekday = case_when(
+  #   weekday == 1 ~ "W1_Sunday", 
+  #   weekday == 2 ~ "W2_Monday", 
+  #   weekday == 3 ~ "W3_Tuesday"
+  # ) %>% 
    regress(rating ~ factor(weekday) + holiday)
 
 ```
-But I suppose if we wanted, we could say, recode Saturday and Sunday into a binary indicator for weekend and see what the result is, though it'll be unbalanced in a 5:2 ratio^[and see later where the holiday variable is completely unbalanced.]
 
-```{r weekends, echo = FALSE}
+However, as an artifact of an earlier time, here's a 2 sample t-test for weekday vs. weekend: 
+
+```{r model weekends, echo = FALSE}
 
 dat %>% 
   mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
-  select(rating, weekday, weekend) %>% 
+  dplyr::select(rating, weekday, weekend) %>% 
   regress(rating ~ weekend)
 
 
 ```
 
-At the time I'm writing this, this analysis is approaching statistical significance, so maybe over time it's approached it? I do worry about the balance of the variables, though, so just to double check...
+So as of February, it looked like weekends are a *little* better, though we were only nearly approaching statistical significance.
+
+This has since fallen *off a cliff*. Whereas there once was a weekend benefit of about 0.2 with a p ~ 0.09 or so, now the weekend benefit is squarely in the realm of "not a real phenomenon."^[I think we might be able to attribute this to the fact that I switched my photography class from Sundays to Wednesdays, and now Sundays are less positive and the week is less uniformly bad.]
+
+```{r weekendsplot, fig.margin = TRUE, echo = FALSE}
+dat %>%
+  mutate(weekend = if_else(weekday %in% c(1, 7), 1, 0)) %>%
+  dplyr::select(rating, weekday, weekend) %>%
+  ggplot(aes(
+    x = rating,
+    group = weekend,
+    linetype = factor(weekend)
+  )) +
+  geom_density() +
+  geom_rangeframe()+
+  theme_tufte() +
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  labs(
+    y = "", 
+    linetype = "Weekend"
+  )+
+  NULL
+```
+
+I *am* concerned about the balance of the variables, however, so let's perform Levene's Test just to make sure we're in the clear with homogeneity of variances. 
 
 ```{r weekend levene, echo = FALSE}
 dat %>% 
   mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
-  select(rating, weekday, weekend) %>% 
-  car::leveneTest(rating~factor(weekend), data = .)
+  dplyr::select(rating, weekday, weekend) %>% 
+  car::leveneTest(rating~factor(weekend), data = .) %>% 
+  as.data.frame() %>% 
+  knitr::kable()
 ```
 
-## Emotions
+
+Okay. Resting easier in that regard.
+
+Just for kicks, let's combine the Relationships model and the Weekend model, keeping only the two significant variables.
+
+The implicit hypothesis of this one would be that part of the impact of weekends and friends both being predictors of a better day is that they overlap in some way. This model disentangles that a little bit given that I have plenty of weekends that don't contain friend and plenty of friend that happens on weekdays. 
+
+```{r model weekend friends, echo = FALSE}
+dat %>% 
+  mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
+  regress(rating ~ weekend * social_friend)
+```
+
+
+It *looks* like the benefit of it being a weekend is entirely accounted for by the fact that I sometimes see friends on weekends, and if we partial out the benefit of friendship, the benefit of weekend alone^[and, interestingly, the benefit of seeing friends ON a weekend!!!] is entirely explained. So to conclude, the only good things about weekends for me are that sometimes I hang with friends on them. 
+
+By the way, this 2x2 binary structure has the feeling of a Diff-in-Diff, weirdly, so we could recompose this as just a table of means to make the regression slightly easier to interpret, now that we know which one is statistically significant: 
+
+```{r trying something out, echo = FALSE}
+dat %>% select(rating, weekday, social_friend) %>% 
+  mutate(weekend = if_else(weekday %in% c(1,7), 1,0)) %>% 
+  group_by(weekend, social_friend) %>% 
+  summarize(mu = round(mean(rating, na.rm = T),2), 
+            sigma = round(sd(rating, na.rm = T),2)) %>% 
+  mutate(weekend = if_else(weekend == 1, "yes","no"),
+         social_friend = if_else(social_friend==1,"yes","no")) %>% 
+  ungroup() %>% 
+  knitr::kable()
+
+```
+
+
+# Emotions
 
 What are my most common feelings? How often do I rate a day as having contained that emotion? 
+
 ```{r feelings, echo = FALSE}
 
 means <- dat %>% 
-  summarize(across(where(is.numeric),  mean)) %>% 
+  summarize(across(where(is.numeric),  mean, na.rm=T)) %>% 
   t() %>% 
   as.data.frame() %>% 
   tibble::rownames_to_column() %>% 
   as_tibble() %>% 
   rename(variable = rowname, mean = V1)
-feelings <- means %>% 
-  filter(str_detect(variable, "feeling"))
-feelings %>% 
+feelings <- means %>%
+  filter(str_detect(variable, "feeling")) 
+feelings %>%
   arrange(desc(mean)) %>%
-  ggplot(aes(x = mean, y = fct_reorder(variable, mean))) + 
+  mutate(across(variable, str_replace, 'feeling_', '')) %>% 
+  ggplot(aes(x = mean, y = fct_reorder(variable, mean))) +
   geom_col(fill = "black")+
   scale_x_continuous(labels = scales::percent, n.breaks = 10)+
   theme_tufte()+
   theme(plot.background = element_rect(fill = "#fffff8"))+
   labs(
-    title = "feelings by frequency",
+    title = "",
     x = "% of days feeling this",
-    y = "Feeling"
+    y = ""
   )
+
 ```
 
-# The holiday effect
+Okay, so assuming that my mood has something to do with the quality of my day (big assumption right) let's grab the top 6 most frequent emotions and see what their associations are in terms of mood as an ANOVA / ANCOVA.^[Well, as a multiple regression but when it's only 6 qualitative factors we're really talking about an ANOVA with the posthoc test built in, which is why we regress. yesssss.] 
+
+
+```{r fig.margin = TRUE, echo = FALSE}
+topsix <- feelings %>% 
+  arrange(desc(mean))%>% 
+  head() %>% 
+  pull(variable)
+dat %>%
+  dplyr::select(day, rating, all_of(topsix)) %>%
+  pivot_longer(-c(rating, day)) %>% 
+  mutate(across(name, str_replace, 'feeling_', '')) %>% 
+  filter(value == 1) %>%
+  ggplot(aes(x = rating, group= name, y = name)) +
+  ggridges::geom_density_ridges(fill= "#fffff8")+
+  labs(
+    y = ""
+  ) +
+  theme_tufte()+
+  geom_rangeframe()+
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  NULL
+
+```
+
+## modeling emotions
+
+The emotions themselves^[and there are 16 of them] are a pretty sparse matrix. 
+
+For example, how many emotions did my most emotional days contain, just to get a sense of the sparseness of the matrix by looking at the least sparse rows? 
+
+```{r emo, echo = FALSE}
+dat %>% 
+  mutate(total = select(., feeling_excited:feeling_tired) %>% rowSums(na.rm = TRUE)) %>% 
+  dplyr::select(total) %>% 
+  cbind(dat$day) %>% 
+  as_tibble() %>% 
+  dplyr::select(`dat$day`, total) %>% 
+  arrange(desc(total)) %>%
+  rename(
+    day = `dat$day`, 
+    total_emotions = total
+  ) %>% 
+  head(6) %>% 
+  knitr::kable()
+```
+
+
+So that tells us that we're not working with something great in terms of data. Maybe there are some sparse matrix techniques I can find or analytic modes worth investigating. 
+
+In general, how have the feelings mapped over time? As binary indicators, there's precious little variance on the y axis, but we can still get a sense of density by using LOESS smoothing: 
+
+```{r small multiples, echo = FALSE}
+dat %>% 
+  dplyr::select(day, starts_with("feeling")) %>% 
+  pivot_longer(cols = starts_with("feeling")) %>% 
+  mutate(across(name, str_replace, 'feeling_', '')) %>% 
+  ggplot(aes(x = day, y = value))+
+  geom_smooth(se = FALSE, color = "black", span = 0.6) + 
+  facet_wrap(~name)+
+  theme_tufte()+
+  labs(title = "Feelings over time", y = "", x = "")+
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  NULL
+
+
+```
+
+
+However, we can also ask, of those top six emotions^[or, the ones that were top six a few months ago when I wrote these models. The models aren't updating dynamically like other things], how much do they, or maybe just which ones of them, are significantly related to the outcome variable of my daily rating? How much does having an angry day actually make my day worse, 'cause I'm sure it does. 
+
+```{r feelings ANOVAs, echo = FALSE}
+dat %>%
+  lm_robust(
+    rating ~ feeling_anxious +
+      feeling_tired + feeling_sad
+    + feeling_annoyed + feeling_depressed + feeling_lonely,
+    data = .
+  ) -> m3
+dat %>%
+  lm_robust(
+    rating ~ day + feeling_anxious +
+      feeling_tired + feeling_sad
+    + feeling_annoyed + feeling_depressed + feeling_lonely,
+    data = .
+  ) -> m4
+
+sjPlot::tab_model(m3, m4)
+
+```
+
+## Emotions as networks
+
+```{r network data prep, echo = FALSE}
+
+cross_products <- dat %>% 
+  filter(day %not_in% c(mdy("03/20/2024"))) %>% 
+  dplyr::select(starts_with("feeling")) %>%  
+  as.matrix() %>% 
+  crossprod() %>% 
+  as.data.frame() %>% 
+  rownames_to_column() %>% 
+  as_tibble()
+
+edges <- cross_products %>% 
+  pivot_longer(cols = -rowname, names_to = "variable2", values_to = "co_occurrences") %>% 
+    mutate(across(c(rowname, variable2), ~ str_remove(., "feeling_"))) 
+  
+```
+
+One analytic tool for thinking about how my emotions work is to ask what kinds of emotions occur *together*. For example, some days are really packed with lots of emotions (see above). 
+
+So there are two main data visualizations that I think might be helpful to take a look at this, the first being a heatmap that gives us a general idea of which co-occurring emotions happen the most, though I find these to not be super great at establishing strong patterns in the data.  
+
+```{r heatmap, echo = FALSE}
+edges %>%
+  ggplot(aes(x = variable2, y = rowname, fill = co_occurrences)) +
+  geom_tile(color = "black") +
+  geom_text(color = "#fffff8", aes(label = edges$co_occurrences)) +
+  scale_fill_gradient(low = "#030303", high = "#bbbbbb") +
+  labs(x = "", y = "",
+       title = "Feeling Co-Occurrences Heat Map") +
+  guides(fill = "none") +
+  theme_tufte() +
+  theme(plot.background = element_rect(fill = "#fffff8"))+
+  theme(axis.text.x = element_text(
+    angle = 45,
+    vjust = 1,
+    hjust = 1
+  )) +
+  NULL
+```
+
+But perhaps a better way to think about it, and one which has less of the problem of "anxious plus anxious" being such a big thing, would be to do an edge bundle where every emotion is a node and you can see how often it connects with other emotion nodes by the strength of that connection: 
+
+```{r edgebundle, echo = FALSE}
+
+
+edges %>%
+  as_tbl_graph() %>% 
+  ggraph( layout = 'linear', circular = TRUE)+
+  #geom_node_point()+
+  geom_edge_arc(alpha = 0.4, 
+                aes(edge_width = co_occurrences,
+                    color = co_occurrences))+
+  geom_node_label(aes(label = name), repel = FALSE)+
+  theme_tufte()+
+  scale_edge_color_gradient(low = "#FFFFF8", high = "#000000")+
+  labs(x="",y = "")+
+  guides(x = "none", y = "none", edge_color = "none",edge_width = "none")+
+  theme(plot.background = element_rect(fill = "#fffff8"))
+```
+
+Here we still see the importance of anxiety as my most common emotion, but it also really lets you explore the strength of other relationships. The next big thing on this notion of co-occurring emotions would be to use clustering algorithms or dimension reduction, which I have worked on but not gotten to a point where I feel that it's worth trying to publish to this document. 
+
+The only other thing I see here is that a lot of positive emotions are near each other in the network and a lot of negatives--the same. So you can kind of see through the area of activity what life is like. 
+
+# Additional and Stray Analyses
+
+## The Tess Effect
+
+`r newthought("Now that Tess and I are")` meeting on different days, it can be possible to disentangle an independent Tess effect from the Tuesday effect, given that we are Tuesday People, or were. Previously with my prior therapist around 2013 I noticed that I would feel better after therapy but usually only in the sense of "god I'm glad that's taken care of." But with Tess, things are different. So does an injection of Tess positivity make me feel better about the rest of the day? 
+
+```{r tess effect, echo = F}
+m1<- dat %>% 
+  lm_robust(rating~tess, data = .)
+m2 <- dat %>% 
+  lm_robust(rating ~ day + tess + social_friend + social_acquaintaince + social_family, data = .)
+sjPlot::tab_model(m1, m2)
+```
+
+Looks like a small effect and maybe more precision is needed due to it being unbalanced? Let's keep an eye on this. 
+
+
+## The holiday effect
 
 `r newthought("I lied before")` when I said holidays were strongly negatively associated with lower mood. This is an artifact in the data due to really bad times around Thanksgiving and Christmas. A t-test can be used to determine this effect. However, the t-test is so unbalanced^[the idea being that with currently 119 regular days and 6 holidays, it almost doesn't matter what the effect of holidays is, a t-test won't pick it up. Nevertheless!] that the standard errors get blown to all hell and it's worse than worthless. Some holidays suck, some holidays are anodyne. Nevertheless, I'm going to keep it as a control for other models. 
 
@@ -263,7 +627,7 @@ dat %>%
   count() %>% 
   mutate(holiday = if_else(holiday==1,"yes", "no"), 
          number = n) %>%
-  select(holiday, number) %>% 
+  dplyr::select(holiday, number) %>% 
   knitr::kable(table.attr = "style='width:30%;'")
 ```
 
@@ -278,3 +642,72 @@ dat %>%
   regress(rating ~ holiday)
 
 ```
+
+
+
+## Loneliness
+
+`r newthought("I can think of two potentially meaningful models")` for thinking about how the loneliness variable is associated with other variables in the data--first, is the loneliness variable significantly predicted by the variables associated with social interaction? For ex, am I more lonely on days where my social interaction is "none" or am I "alone in a crowded room" sometimes? Does the experience of being around others^[this question brought to you by a bad first date that made me feel even more alone] make me feel fulfilled or just go to emphasize how alone I often am? 
+
+``` {r model loneliness logistic, echo = FALSE}
+
+logistic1<-dat %>% 
+  glm(feeling_lonely~ social_acquaintaince + social_friend+ social_family + social_none, data = ., family = "binomial") 
+  sjPlot::tab_model(logistic1)
+
+
+# Generate ROC curve
+roc_curve <- roc(dat$feeling_lonely, fitted(logistic1))
+#print(length(fitted(logistic1)))
+#print(length(dat$feeling_lonely))
+# Plot ROC curve
+print(roc_curve)
+#plot(roc_curve)
+
+
+```
+
+An ROC curve of 0.63 isn't particularly exciting for me...But also it looks like the thing is just under-powered given that the SEs feel kind of big and the vars are all approaching significance. Keep this one in the back burner until we have a lot more data maybe. 
+
+
+Secondly, does loneliness interact with the variables above to impact the general ratings outcome variable? This is basically the same regression as before but with a different covariate: 
+
+``` {r model loneliness linear, echo = FALSE}
+
+dat %>% 
+  lm_robust(rating~ social_acquaintaince + social_friend + social_family, data = .) -> m1
+
+dat %>% 
+  lm_robust(rating ~ feeling_lonely*social_acquaintaince + feeling_lonely*social_friend+ feeling_lonely*social_family, data = .) -> m2
+
+sjPlot::tab_model(m1, m2)
+
+
+```
+
+
+## The Kitchen Sink
+
+Finally, just for fun, let's run a kitchen sink model on all variables. 
+
+```{r kitchensink, echo = FALSE}
+features <- c("day", "social_acquaintaince", "social_friend", "social_family", 
+              "weekday", "holiday", "feeling_excited", 
+              "feeling_relaxed", "feeling_proud", "feeling_hopeful", 
+              "feeling_happy", "feeling_enthusiastic", "feeling_pit_a_pat", 
+              "feeling_refreshed", "feeling_depressed", "feeling_lonely", 
+              "feeling_anxious", "feeling_sad", "feeling_angry", 
+              "feeling_pressured", "feeling_annoyed", "feeling_tired", "tess")
+
+formula <- as.formula(paste("rating ~", paste(features, collapse = " + ")))
+dat %>% 
+  rename(feeling_pit_a_pat = `feeling_pit-a-pat`) %>% 
+  regress(formula)
+
+```
+
+
+
+`r newthought("Fine") `
+
+
